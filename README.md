@@ -1,8 +1,19 @@
-# TradingView MCP Jackson
+# Rainwater TradingView MCP
 
-If you found this from the YouTube video — welcome. This is the improved fork. Everything you need is below.
+<p align="center">
+  <img src="assets/rainwater-app-icon.png" alt="Rainwater logo" width="116">
+</p>
 
-Built on top of the original [tradingview-mcp](https://github.com/tradesdontlie/tradingview-mcp) by [@tradesdontlie](https://github.com/tradesdontlie). Full credit to them for the foundation. This fork adds a morning brief workflow, a rules config, and fixes the launch bug on TradingView Desktop v2.14+.
+<p align="center">
+  <img src="assets/rainwater-mcp-card.svg" alt="Rainwater TradingView MCP animated card">
+</p>
+
+<p align="center">
+  <strong>Compact, local-first TradingView context for AI trading workflows.</strong><br>
+  One MCP call can read chart state, quote, OHLC summary, indicator values, Pine levels, zones, labels, speed, and estimated token cost.
+</p>
+
+Built from the Lewis Jackson fork of the original [tradingview-mcp](https://github.com/tradesdontlie/tradingview-mcp) by [@tradesdontlie](https://github.com/tradesdontlie). Full credit to the upstream projects for the foundation. Rainwater adds a compact context lane, a morning brief workflow, rules config, and fixes for current TradingView Desktop behavior.
 
 > [!WARNING]
 > **Not affiliated with TradingView Inc. or Anthropic.** This tool connects to your locally running TradingView Desktop app via Chrome DevTools Protocol. Review the [Disclaimer](#disclaimer) before use.
@@ -15,10 +26,41 @@ Built on top of the original [tradingview-mcp](https://github.com/tradesdontlie/
 
 ---
 
+## Why Rainwater
+
+```mermaid
+flowchart LR
+  TV[TradingView Desktop] --> CDP[Chrome DevTools Port 9222]
+  CDP --> MCP[Rainwater TradingView MCP]
+  MCP --> D[rainwater_chart_digest]
+  D --> A[AI assistant]
+  A --> U[Chart-aware trading workflow]
+```
+
+The default first read is `rainwater_chart_digest`: it compresses the expensive first-pass chart inspection into one bounded payload.
+
+$$estimated\_tokens \approx \lceil output\_bytes / 4 \rceil$$
+
+<details>
+<summary>What the digest includes</summary>
+
+- Symbol, timeframe, chart type, and visible studies
+- Latest quote from the active chart
+- OHLC summary over a bounded bar window
+- Last three bars for immediate context
+- Study values from the data window
+- Pine `line.new`, `label.new`, and `box.new` outputs for levels, annotations, and zones
+- `elapsed_ms`, `output_bytes`, and `estimated_tokens`
+
+</details>
+
+---
+
 ## What's New in This Fork
 
 | Feature | What it does |
 |---------|-------------|
+| `rainwater_chart_digest` | One compact first-pass read of the active chart. Live NQ tests returned about 600-700 estimated tokens while replacing roughly seven separate reads |
 | `morning_brief` | One command that scans your watchlist, reads all your indicators, and returns structured data for Claude to generate your session bias |
 | `session_save` / `session_get` | Saves your daily brief to `~/.tradingview-mcp/sessions/` so you can compare today vs yesterday |
 | `rules.json` | Write your trading rules once — bias criteria, risk rules, watchlist. The morning brief applies them automatically every day |
@@ -32,9 +74,9 @@ Built on top of the original [tradingview-mcp](https://github.com/tradesdontlie/
 Paste this into Claude Code and it will handle everything:
 
 ```
-Set up TradingView MCP Jackson for me. 
-Clone https://github.com/LewisWJackson/tradingview-mcp-jackson.git to ~/tradingview-mcp-jackson, run npm install, then add it to my MCP config at ~/.claude/.mcp.json (merge with any existing servers, don't overwrite them). 
-The config block is: { "mcpServers": { "tradingview": { "command": "node", "args": ["/Users/YOUR_USERNAME/tradingview-mcp-jackson/src/server.js"] } } } — replace YOUR_USERNAME with my actual username.
+Set up Rainwater TradingView MCP for me.
+Clone https://github.com/rainwaterlogic/rainwater-tradingview-mcp.git to ~/rainwater-tradingview-mcp, run npm install, then add it to my MCP config at ~/.claude/.mcp.json (merge with any existing servers, don't overwrite them).
+The config block is: { "mcpServers": { "tradingview": { "command": "node", "args": ["/Users/YOUR_USERNAME/rainwater-tradingview-mcp/src/server.js"] } } } — replace YOUR_USERNAME with my actual username.
 Then copy rules.example.json to rules.json and open it so I can fill in my trading rules.
 Finally restart and verify with tv_health_check.
 ```
@@ -57,8 +99,8 @@ Or follow the manual steps below.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/LewisWJackson/tradingview-mcp-jackson.git ~/tradingview-mcp-jackson
-cd ~/tradingview-mcp-jackson
+git clone https://github.com/rainwaterlogic/rainwater-tradingview-mcp.git ~/rainwater-tradingview-mcp
+cd ~/rainwater-tradingview-mcp
 npm install
 ```
 
@@ -103,7 +145,7 @@ Add to `~/.claude/.mcp.json` (merge with any existing servers):
   "mcpServers": {
     "tradingview": {
       "command": "node",
-      "args": ["/Users/YOUR_USERNAME/tradingview-mcp-jackson/src/server.js"]
+      "args": ["/Users/YOUR_USERNAME/rainwater-tradingview-mcp/src/server.js"]
     }
   }
 }
