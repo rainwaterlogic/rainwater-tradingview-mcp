@@ -15,3 +15,4 @@ export * as watchlist from './watchlist.js';
 export * as indicators from './indicators.js';
 export * as ui from './ui.js';
 export * as rainwater from './rainwater.js';
+export * as doctor from './doctor.js';

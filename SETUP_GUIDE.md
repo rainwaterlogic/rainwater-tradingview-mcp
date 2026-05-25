@@ -108,14 +108,16 @@ cd ~/rainwater-tradingview-mcp
 npm link
 ```
 
-Then `tv status`, `tv quote`, `tv pine compile`, etc. work from anywhere.
+Then `tv doctor`, `tv status`, `tv quote`, `tv pine compile`, etc. work from anywhere.
 
 ## Troubleshooting
 
 | Problem | Solution |
 |---------|----------|
+| Unsure what is broken | Run `tv doctor` first. It checks Node, MCP configs, duplicate server processes, TradingView, CDP, and stale client schema symptoms. |
 | `cdp_connected: false` | Launch TradingView with `--remote-debugging-port=9222` |
 | `ECONNREFUSED` | TradingView isn't running or port 9222 is blocked |
+| Client still shows 78 tools | Restart Codex/Claude so it reloads the 83-tool Rainwater MCP schema. |
 | MCP server not showing in Claude Code | Check `~/.claude/.mcp.json` syntax, restart Claude Code |
 | `tv` command not found | Run `npm link` from the project directory |
 | Tools return stale data | TradingView may still be loading — wait a few seconds |

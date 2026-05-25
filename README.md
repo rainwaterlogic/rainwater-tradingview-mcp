@@ -322,6 +322,7 @@ tv brief                           # run morning brief
 tv session get                     # get today's saved brief
 tv session save --brief "..."      # save a brief
 
+tv doctor                          # diagnose install/runtime/CDP issues
 tv status                          # check connection
 tv quote                           # current price
 tv symbol BTCUSD                   # change symbol
@@ -340,8 +341,10 @@ Full command list: `tv --help`
 
 | Problem | Solution |
 |---------|----------|
+| Unsure what is broken | Run `tv doctor` first. It checks Node, MCP configs, duplicate server processes, TradingView, CDP, and stale client schema symptoms. |
 | `cdp_connected: false` | TradingView isn't running with `--remote-debugging-port=9222`. Use the launch script. |
 | `ECONNREFUSED` | TradingView isn't running or port 9222 is blocked |
+| Client still shows 78 tools | Restart Codex/Claude so it reloads the 83-tool Rainwater MCP schema. |
 | MCP server not showing in Claude Code | Check `~/.claude/.mcp.json` syntax, restart Claude Code |
 | `tv` command not found | Run `npm link` from the project directory |
 | `morning_brief` — "No rules.json found" | Run `cp rules.example.json rules.json` and fill it in |
