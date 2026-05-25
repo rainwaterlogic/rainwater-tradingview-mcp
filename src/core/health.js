@@ -8,12 +8,23 @@ import { fileURLToPath } from 'url';
 
 const TOOL_COUNT = 83;
 const SERVER_PATH = fileURLToPath(new URL('../server.js', import.meta.url));
+const HEALTH_TIMEOUT_MS = 5000;
+
+function withTimeout(promise, ms, message) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 
 export async function healthCheck() {
-  await getClient();
-  const target = await getTargetInfo();
+  await withTimeout(getClient(), HEALTH_TIMEOUT_MS, 'Timed out connecting to TradingView CDP');
+  const target = await withTimeout(getTargetInfo(), HEALTH_TIMEOUT_MS, 'Timed out reading TradingView target info');
 
-  const state = await evaluate(`
+  const state = await withTimeout(evaluate(`
     (function() {
       var result = { url: window.location.href, title: document.title };
       try {
@@ -31,7 +42,7 @@ export async function healthCheck() {
       }
       return result;
     })()
-  `);
+  `), HEALTH_TIMEOUT_MS, 'Timed out reading TradingView chart API state');
 
   return {
     success: true,
@@ -291,7 +302,22 @@ export async function launch({ port, kill_existing } = {}) {
     } catch { /* may not be running */ }
   }
 
-  const child = spawn(tvPath, [`--remote-debugging-port=${cdpPort}`], { detached: true, stdio: 'ignore' });
+  let child;
+  let launchMethod = 'binary';
+  if (platform === 'darwin') {
+    const appIndex = tvPath.indexOf('.app/Contents/MacOS/');
+    if (appIndex !== -1) {
+      const appBundle = tvPath.slice(0, appIndex + 4);
+      child = spawn('open', ['-na', appBundle, '--args', `--remote-debugging-port=${cdpPort}`], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      launchMethod = 'open';
+    }
+  }
+  if (!child) {
+    child = spawn(tvPath, [`--remote-debugging-port=${cdpPort}`], { detached: true, stdio: 'ignore' });
+  }
   child.unref();
 
   for (let i = 0; i < 15; i++) {
@@ -308,7 +334,7 @@ export async function launch({ port, kill_existing } = {}) {
       if (ready) {
         const info = JSON.parse(ready);
         return {
-          success: true, platform, binary: tvPath, pid: child.pid,
+          success: true, platform, binary: tvPath, launch_method: launchMethod, launcher_pid: child.pid,
           cdp_port: cdpPort, cdp_url: `http://localhost:${cdpPort}`,
           browser: info.Browser, user_agent: info['User-Agent'],
         };
@@ -317,7 +343,7 @@ export async function launch({ port, kill_existing } = {}) {
   }
 
   return {
-    success: true, platform, binary: tvPath, pid: child.pid, cdp_port: cdpPort, cdp_ready: false,
+    success: true, platform, binary: tvPath, launch_method: launchMethod, launcher_pid: child.pid, cdp_port: cdpPort, cdp_ready: false,
     warning: 'TradingView launched but CDP not responding yet. It may still be loading. Try tv_health_check in a few seconds.',
   };
 }
