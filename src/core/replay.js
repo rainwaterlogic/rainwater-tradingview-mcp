@@ -69,11 +69,24 @@ export async function stop() {
   if (!started) {
     // Try to hide toolbar even if not started
     try { await evaluate(`${rp}.hideReplayToolbar()`); } catch {}
-    return { success: true, action: 'already_stopped' };
+    const state = await replayState(rp);
+    return { success: true, action: 'already_stopped', ...state };
   }
-  await evaluate(`${rp}.stopReplay()`);
+  try { await evaluate(`${rp}.goToRealtime()`); } catch {}
+  const stillStarted = await evaluate(wv(`${rp}.isReplayStarted()`));
+  if (stillStarted) await evaluate(`${rp}.stopReplay()`);
+  await evaluate(`
+    (function() {
+      var r = ${rp};
+      var c = r._replayUIController;
+      try { if (c && typeof c.requestCloseReplay === 'function') c.requestCloseReplay(); } catch(e) {}
+      try { if (c && typeof c._setReplayModeEnabled === 'function') c._setReplayModeEnabled(false); } catch(e) {}
+      try { if (c && typeof c._forceStopReplay === 'function') c._forceStopReplay(); } catch(e) {}
+    })()
+  `);
   try { await evaluate(`${rp}.hideReplayToolbar()`); } catch {}
-  return { success: true, action: 'replay_stopped' };
+  const state = await replayState(rp);
+  return { success: true, action: state.is_replay_mode_enabled ? 'replay_stop_requested' : 'replay_stopped', ...state };
 }
 
 export async function trade({ action }) {
@@ -100,6 +113,8 @@ export async function status() {
       return {
         is_replay_available: unwrap(r.isReplayAvailable()),
         is_replay_started: unwrap(r.isReplayStarted()),
+        is_replay_toolbar_visible: typeof r.isReplayToolbarVisible === 'function' ? unwrap(r.isReplayToolbarVisible()) : null,
+        is_replay_mode_enabled: r._replayUIController && typeof r._replayUIController.isReplayModeEnabled === 'function' ? unwrap(r._replayUIController.isReplayModeEnabled()) : null,
         is_autoplay_started: unwrap(r.isAutoplayStarted()),
         replay_mode: unwrap(r.replayMode()),
         current_date: unwrap(r.currentDate()),
@@ -110,4 +125,18 @@ export async function status() {
   const pos = await evaluate(wv(`${rp}.position()`));
   const pnl = await evaluate(wv(`${rp}.realizedPL()`));
   return { success: true, ...st, position: pos, realized_pnl: pnl };
+}
+
+async function replayState(rp) {
+  return evaluate(`
+    (function() {
+      var r = ${rp};
+      function unwrap(v) { return (v && typeof v === 'object' && typeof v.value === 'function') ? v.value() : v; }
+      return {
+        is_replay_started: unwrap(r.isReplayStarted()),
+        is_replay_toolbar_visible: typeof r.isReplayToolbarVisible === 'function' ? unwrap(r.isReplayToolbarVisible()) : null,
+        is_replay_mode_enabled: r._replayUIController && typeof r._replayUIController.isReplayModeEnabled === 'function' ? unwrap(r._replayUIController.isReplayModeEnabled()) : null,
+      };
+    })()
+  `);
 }

@@ -15,6 +15,7 @@ import { registerUiTools } from "./tools/ui.js";
 import { registerPaneTools } from "./tools/pane.js";
 import { registerTabTools } from "./tools/tab.js";
 import { registerMorningTools } from "./tools/morning.js";
+import { registerRainwaterTools } from "./tools/rainwater.js";
 
 const server = new McpServer(
   {
@@ -29,6 +30,7 @@ const server = new McpServer(
 TOOL SELECTION GUIDE — use this to pick the right tool:
 
 Reading your chart:
+- rainwater_chart_digest → Rainwater compact context: one fast call for chart state, quote, OHLC summary, studies, Pine drawings, and token/speed estimates
 - chart_get_state → get symbol, timeframe, all indicator names + entity IDs (call first)
 - data_get_study_values → get current numeric values from ALL visible indicators (RSI, MACD, BB, EMA, etc.)
 - quote_get → get real-time price snapshot (last, OHLC, volume)
@@ -63,6 +65,7 @@ Panes: pane_list, pane_set_layout (s, 2h, 2v, 4, 6, 8), pane_focus, pane_set_sym
 Tabs: tab_list, tab_new, tab_close, tab_switch
 
 CONTEXT MANAGEMENT:
+- Prefer rainwater_chart_digest for first-pass analysis; it replaces 4-7 separate chart-reading calls
 - ALWAYS use summary=true on data_get_ohlcv
 - ALWAYS use study_filter on pine tools when you know which indicator you want
 - NEVER use verbose=true unless user specifically asks for raw data
@@ -87,6 +90,7 @@ registerUiTools(server);
 registerPaneTools(server);
 registerTabTools(server);
 registerMorningTools(server);
+registerRainwaterTools(server);
 
 // Startup notice (stderr so it doesn't interfere with MCP stdio protocol)
 process.stderr.write(

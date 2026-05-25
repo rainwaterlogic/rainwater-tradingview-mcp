@@ -174,7 +174,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 |------------|---------------|
 | "Run my morning brief" | `morning_brief` → apply rules → `session_save` |
 | "What was my bias yesterday?" | `session_get` |
-| "What's on my chart?" | `chart_get_state` → `data_get_study_values` → `quote_get` |
+| "What's on my chart?" | `rainwater_chart_digest` |
 | "Give me a full analysis" | `quote_get` → `data_get_study_values` → `data_get_pine_lines` → `data_get_pine_labels` → `capture_screenshot` |
 | "Switch to BTCUSD daily" | `chart_set_symbol` → `chart_set_timeframe` |
 | "Write a Pine Script for..." | `pine_set_source` → `pine_smart_compile` → `pine_get_errors` |
@@ -184,7 +184,13 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 ---
 
-## Tool Reference (81 MCP tools)
+## Tool Reference (82 MCP tools)
+
+### Rainwater Context
+
+| Tool | What it does |
+|------|-------------|
+| `rainwater_chart_digest` | One compact first-pass read of the active chart: state, quote, OHLC summary, study values, Pine levels/zones/labels, elapsed time, output bytes, and estimated tokens. Use `study_filter` and `max_items` to keep context tight. |
 
 ### Morning Brief (new in this fork)
 
@@ -198,6 +204,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 | Tool | When to use | Output size |
 |------|------------|-------------|
+| `rainwater_chart_digest` | First-pass Rainwater analysis in one call | Self-reports bytes/tokens |
 | `chart_get_state` | First call — get symbol, timeframe, all indicator names + IDs | ~500B |
 | `data_get_study_values` | Read current RSI, MACD, BB, EMA values from all indicators | ~500B |
 | `quote_get` | Get latest price, OHLC, volume | ~200B |

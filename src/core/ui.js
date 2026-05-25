@@ -39,24 +39,42 @@ export async function openPanel({ panel, action }) {
         var panel = ${JSON.stringify(panel)};
         var widgetName = ${JSON.stringify(widgetName)};
         var action = ${JSON.stringify(action)};
+        function callFirst(names, arg) {
+          for (var i = 0; i < names.length; i++) {
+            var fn = bwb[names[i]];
+            if (typeof fn !== 'function') continue;
+            try {
+              if (arg !== undefined) fn.call(bwb, arg);
+              else fn.call(bwb);
+              return names[i];
+            } catch(e) {}
+          }
+          return null;
+        }
         var bottomArea = document.querySelector('[class*="layout__area--bottom"]');
         var isOpen = !!(bottomArea && bottomArea.offsetHeight > 50);
         if (panel === 'pine-editor') { var monacoEl = document.querySelector('.monaco-editor.pine-editor-monaco'); isOpen = isOpen && !!monacoEl; }
         if (panel === 'strategy-tester') { var stratPanel = document.querySelector('[data-name="backtesting"]') || document.querySelector('[class*="strategyReport"]'); isOpen = isOpen && !!(stratPanel && stratPanel.offsetParent); }
         var performed = 'none';
+        var method = null;
         if (action === 'open' || (action === 'toggle' && !isOpen)) {
-          if (panel === 'pine-editor') { if (typeof bwb.activateScriptEditorTab === 'function') bwb.activateScriptEditorTab(); else if (typeof bwb.showWidget === 'function') bwb.showWidget(widgetName); }
-          else { if (typeof bwb.showWidget === 'function') bwb.showWidget(widgetName); }
-          performed = 'opened';
+          if (panel === 'pine-editor') {
+            method = callFirst(['activateScriptEditorTab'])
+              || callFirst(['showWidget', 'show', 'open'], widgetName);
+          } else {
+            method = callFirst(['showWidget', 'show', 'open'], widgetName);
+          }
+          performed = method ? 'opened' : 'unsupported';
         } else if (action === 'close' || (action === 'toggle' && isOpen)) {
-          if (typeof bwb.hideWidget === 'function') bwb.hideWidget(widgetName);
-          performed = 'closed';
+          method = callFirst(['hideWidget', 'hide', 'close'], widgetName)
+            || callFirst(['hide', 'close']);
+          performed = method ? 'closed' : 'unsupported';
         }
-        return { was_open: isOpen, performed: performed };
+        return { was_open: isOpen, performed: performed, method: method };
       })()
     `);
     if (result && result.error) throw new Error(result.error);
-    return { success: true, panel, action, was_open: result?.was_open ?? false, performed: result?.performed ?? 'unknown' };
+    return { success: true, panel, action, was_open: result?.was_open ?? false, performed: result?.performed ?? 'unknown', method: result?.method || null };
   } else {
     const selectorMap = {
       'watchlist': { dataName: 'base-watchlist-widget-button', ariaLabel: 'Watchlist' },
