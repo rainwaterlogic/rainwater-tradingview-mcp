@@ -226,7 +226,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 ---
 
-## Tool Reference (82 MCP tools)
+## Tool Reference (83 MCP tools)
 
 ### Rainwater Context
 
@@ -311,6 +311,7 @@ Read `line.new()`, `label.new()`, `table.new()`, `box.new()` output from any vis
 | `watchlist_get` / `watchlist_add` | Read/modify watchlist |
 | `capture_screenshot` | Screenshot (regions: full, chart, strategy_tester) |
 | `tv_launch` / `tv_health_check` | Launch TradingView and verify connection |
+| `tv_mcp_runtime_status` | Report MCP PID, parent PID, memory, sibling server count, lifecycle guards, and CDP listening state |
 
 ---
 
@@ -356,11 +357,11 @@ Full command list: `tv --help`
 Claude Code  ←→  MCP Server (stdio)  ←→  CDP (port 9222)  ←→  TradingView Desktop (Electron)
 ```
 
-- **78 original tools** + **3 morning brief tools** = 81 MCP tools total
+- **83 MCP tools** including Rainwater compact context, runtime status, morning brief, Pine, chart, replay, drawing, and UI tools
 - **Transport**: MCP over stdio + CLI (`tv` command)
 - **Connection**: Chrome DevTools Protocol on localhost:9222
 - **No external network calls** — everything runs locally
-- **Zero extra dependencies** beyond the original
+- **Lifecycle guards**: signal cleanup, stdin-close cleanup, parent-death watch, and optional `TV_MCP_IDLE_EXIT_MS`
 
 ---
 

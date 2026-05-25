@@ -4,6 +4,10 @@
 import { getClient, getTargetInfo, evaluate } from '../connection.js';
 import { existsSync } from 'fs';
 import { execSync, spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const TOOL_COUNT = 83;
+const SERVER_PATH = fileURLToPath(new URL('../server.js', import.meta.url));
 
 export async function healthCheck() {
   await getClient();
@@ -157,6 +161,74 @@ export async function uiState() {
   `);
 
   return { success: true, ...state };
+}
+
+export async function runtimeStatus() {
+  const memory = process.memoryUsage();
+  const siblings = findServerSiblings();
+  return {
+    success: true,
+    pid: process.pid,
+    ppid: process.ppid,
+    uptime_seconds: Math.round(process.uptime()),
+    rss_mb: Math.round(memory.rss / 1024 / 1024),
+    heap_used_mb: Math.round(memory.heapUsed / 1024 / 1024),
+    node: process.version,
+    platform: process.platform,
+    tool_count: TOOL_COUNT,
+    server_path: SERVER_PATH,
+    sibling_server_count: siblings.length,
+    sibling_servers: siblings,
+    cdp: await cdpStatus(),
+    lifecycle_guards: {
+      stdin_close_exit: true,
+      signal_exit: ['SIGINT', 'SIGTERM', 'SIGHUP'],
+      parent_death_watch_ms: Number.parseInt(process.env.TV_MCP_PARENT_WATCH_MS || '30000', 10),
+      idle_exit_ms: process.env.TV_MCP_IDLE_EXIT_MS ? Number.parseInt(process.env.TV_MCP_IDLE_EXIT_MS, 10) : null,
+    },
+  };
+}
+
+function findServerSiblings() {
+  if (process.platform === 'win32') return [];
+  try {
+    const out = execSync('ps -axo pid=,ppid=,rss=,command=', { timeout: 3000 }).toString();
+    return out.split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => {
+        const match = line.match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.+)$/);
+        if (!match) return null;
+        return {
+          pid: Number(match[1]),
+          ppid: Number(match[2]),
+          rss_mb: Math.round(Number(match[3]) / 1024),
+          command: match[4],
+        };
+      })
+      .filter(proc => proc && proc.command.includes(SERVER_PATH) && proc.pid !== process.pid);
+  } catch {
+    return [];
+  }
+}
+
+async function cdpStatus() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1000);
+  try {
+    const resp = await fetch('http://127.0.0.1:9222/json/version', { signal: controller.signal });
+    if (!resp.ok) return { listening: false, status: resp.status };
+    const body = await resp.json();
+    return {
+      listening: true,
+      browser: body.Browser,
+      user_agent: body['User-Agent'],
+    };
+  } catch (err) {
+    return { listening: false, error: err.name === 'AbortError' ? 'timeout' : err.message };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function launch({ port, kill_existing } = {}) {
