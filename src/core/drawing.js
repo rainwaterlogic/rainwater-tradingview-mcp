@@ -31,7 +31,7 @@ export async function drawShape({ shape, point, point2, overrides: overridesRaw,
   const after = await evaluate(`${apiPath}.getAllShapes().map(function(s) { return s.id; })`);
   const newId = (after || []).find(id => !(before || []).includes(id)) || null;
   const result = { entity_id: newId };
-  return { success: true, shape, entity_id: result?.entity_id };
+  return { success: true, shape, created: !!result?.entity_id, entity_id: result?.entity_id };
 }
 
 export async function listDrawings() {
@@ -98,6 +98,27 @@ export async function removeOne({ entity_id }) {
 
 export async function clearAll() {
   const apiPath = await getChartApi();
-  await evaluate(`${apiPath}.removeAllShapes()`);
-  return { success: true, action: 'all_shapes_removed' };
+  const result = await evaluate(`
+    (function() {
+      var api = ${apiPath};
+      var before = api.getAllShapes();
+      var beforeIds = before.map(function(s) { return s.id; });
+      try { api.removeAllShapes(); } catch(e) {}
+      for (var i = 0; i < beforeIds.length; i++) {
+        try { api.removeEntity(beforeIds[i]); } catch(e) {}
+      }
+      var after = api.getAllShapes();
+      var afterIds = after.map(function(s) { return s.id; });
+      var afterSet = {};
+      for (var j = 0; j < afterIds.length; j++) afterSet[afterIds[j]] = true;
+      var removed = beforeIds.filter(function(id) { return !afterSet[id]; });
+      return {
+        before_count: before.length,
+        after_count: after.length,
+        removed_count: removed.length,
+        remaining_ids: afterIds.slice(0, 25)
+      };
+    })()
+  `);
+  return { success: true, action: 'clear_requested', ...result };
 }

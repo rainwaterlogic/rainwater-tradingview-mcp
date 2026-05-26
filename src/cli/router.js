@@ -40,13 +40,18 @@ function printCommandHelp(name, cmd) {
     console.log(`Usage: tv ${name} [options]\n`);
     console.log(cmd.description);
   }
-  const opts = cmd.options || {};
-  if (Object.keys(opts).length > 0) {
-    console.log('\nOptions:');
-    for (const [k, v] of Object.entries(opts)) {
-      const flag = v.short ? `-${v.short}, --${k}` : `    --${k}`;
-      console.log(`  ${flag.padEnd(20)}${v.description || ''}`);
-    }
+  printOptions(cmd.options || {});
+}
+
+function printOptions(options) {
+  const entries = Object.entries(options);
+  if (entries.length === 0) return;
+  const flags = entries.map(([k, v]) => v.short ? `-${v.short}, --${k}` : `    --${k}`);
+  const width = Math.max(20, ...flags.map(flag => flag.length + 2));
+  console.log('\nOptions:');
+  for (let i = 0; i < entries.length; i++) {
+    const [, v] = entries[i];
+    console.log(`  ${flags[i].padEnd(width)}${v.description || ''}`);
   }
 }
 
@@ -94,13 +99,7 @@ export async function run(argv) {
       if (values.help) {
         console.log(`Usage: tv ${cmdName} ${subName} [options]\n`);
         console.log(sub.description);
-        if (Object.keys(options).length > 0) {
-          console.log('\nOptions:');
-          for (const [k, v] of Object.entries(options)) {
-            const flag = v.short ? `-${v.short}, --${k}` : `    --${k}`;
-            console.log(`  ${flag.padEnd(20)}${v.description || ''}`);
-          }
-        }
+        printOptions(options);
         process.exit(0);
       }
       await execute(handler, values, positionals);

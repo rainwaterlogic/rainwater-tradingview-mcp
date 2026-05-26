@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a reproducible Rainwater TradingView MCP problem
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Please run `tv doctor` first and paste the relevant output below.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe what broke and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the exact MCP tool call or `tv` command when possible.
+      placeholder: |
+        1. Open TradingView Desktop with CDP
+        2. Run `tv ...`
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: tv doctor output
+      description: Paste the relevant `tv doctor` JSON. Remove anything private.
+      render: json
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: macOS 15.5, Windows 11, Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      placeholder: node -v
+  - type: textarea
+    id: notes
+    attributes:
+      label: Extra context
+      description: Screenshots, logs, or notes about TradingView Desktop state.

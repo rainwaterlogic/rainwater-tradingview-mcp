@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, execSync } from 'child_process';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { writeFileSync, unlinkSync } from 'fs';
+import { mkdirSync, writeFileSync, unlinkSync, rmSync } from 'fs';
 
 function require_fs() { return { writeFileSync, unlinkSync }; }
 
@@ -77,6 +77,92 @@ describe('CLI — help and routing', () => {
     assert.equal(exitCode, 0);
     assert.ok(stdout.includes('--count'));
     assert.ok(stdout.includes('--summary'));
+  });
+
+  it('doctor --help shows diagnostic options', () => {
+    const { stdout, exitCode } = run(['doctor', '--help']);
+    assert.equal(exitCode, 0);
+    assert.ok(stdout.includes('Diagnose MCP install'));
+    assert.ok(stdout.includes('--no-cdp'));
+    assert.ok(stdout.includes('--server-path'));
+  });
+});
+
+describe('CLI — doctor (offline)', () => {
+  it('returns install/runtime diagnostics without a CDP dependency', () => {
+    const tmp = join(__dirname, '_doctor_tmp');
+    const fakeServer = join(tmp, 'src', 'server.js');
+    const codexConfig = join(tmp, 'codex.toml');
+    const claudeConfig = join(tmp, 'claude.json');
+    const claudeDesktopConfig = join(tmp, 'claude-desktop.json');
+    mkdirSync(join(tmp, 'src'), { recursive: true });
+    writeFileSync(fakeServer, 'console.log("fake");\n');
+    writeFileSync(codexConfig, `[mcp_servers.tradingview]\ncommand = "node"\nargs = ["${fakeServer}"]\n`);
+    writeFileSync(claudeConfig, JSON.stringify({
+      mcpServers: {
+        tradingview: {
+          command: 'node',
+          args: [fakeServer],
+        },
+      },
+    }));
+    writeFileSync(claudeDesktopConfig, '{}');
+
+    try {
+      const { stdout, exitCode } = run([
+        'doctor',
+        '--no-cdp',
+        '--server-path', fakeServer,
+        '--codex-config', codexConfig,
+        '--claude-config', claudeConfig,
+        '--claude-desktop-config', claudeDesktopConfig,
+      ]);
+      assert.equal(exitCode, 0);
+      const result = JSON.parse(stdout);
+      assert.equal(result.success, true);
+      assert.equal(result.expected.tool_count, 83);
+      assert.equal(result.checks.server.status, 'ok');
+      assert.equal(result.checks.codex_config.status, 'ok');
+      assert.equal(result.checks.claude_code_config.status, 'ok');
+      assert.equal(result.checks.cdp.skipped, true);
+      assert.ok(result.checks.client_reload.stale_schema_symptoms.includes('client still reports 78 TradingView tools'));
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  it('warns on config mismatch', () => {
+    const tmp = join(__dirname, '_doctor_mismatch_tmp');
+    const fakeServer = join(tmp, 'src', 'server.js');
+    const otherServer = join(tmp, 'other', 'server.js');
+    const codexConfig = join(tmp, 'codex.toml');
+    const claudeConfig = join(tmp, 'claude.json');
+    const claudeDesktopConfig = join(tmp, 'claude-desktop.json');
+    mkdirSync(join(tmp, 'src'), { recursive: true });
+    mkdirSync(join(tmp, 'other'), { recursive: true });
+    writeFileSync(fakeServer, 'console.log("fake");\n');
+    writeFileSync(otherServer, 'console.log("other");\n');
+    writeFileSync(codexConfig, `[mcp_servers.tradingview]\ncommand = "node"\nargs = ["${otherServer}"]\n`);
+    writeFileSync(claudeConfig, JSON.stringify({ mcpServers: { tradingview: { command: 'node', args: [otherServer] } } }));
+    writeFileSync(claudeDesktopConfig, '{}');
+
+    try {
+      const { stdout, exitCode } = run([
+        'doctor',
+        '--no-cdp',
+        '--server-path', fakeServer,
+        '--codex-config', codexConfig,
+        '--claude-config', claudeConfig,
+        '--claude-desktop-config', claudeDesktopConfig,
+      ]);
+      assert.equal(exitCode, 0);
+      const result = JSON.parse(stdout);
+      assert.equal(result.status, 'warn');
+      assert.equal(result.checks.codex_config.status, 'warn');
+      assert.equal(result.checks.claude_code_config.status, 'warn');
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 

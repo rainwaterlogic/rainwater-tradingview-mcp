@@ -18,6 +18,11 @@ export function registerHealthTools(server) {
     catch (err) { return jsonResult({ success: false, error: err.message }, true); }
   });
 
+  server.tool('tv_mcp_runtime_status', 'Report this MCP server process status: PID, PPID, memory, sibling server count, lifecycle guards, and CDP listening state.', {}, async () => {
+    try { return jsonResult(await core.runtimeStatus()); }
+    catch (err) { return jsonResult({ success: false, error: err.message }, true); }
+  });
+
   server.tool('tv_launch', 'Launch TradingView Desktop with Chrome DevTools Protocol (remote debugging) enabled. Auto-detects install location on Mac, Windows, and Linux.', {
     port: z.coerce.number().optional().describe('CDP port (default 9222)'),
     kill_existing: z.coerce.boolean().optional().describe('Kill existing TradingView instances first (default true)'),

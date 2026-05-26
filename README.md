@@ -1,8 +1,33 @@
-# TradingView MCP Jackson
+<div align="center">
+  <img src="assets/rainwater-app-icon.png" alt="Rainwater logo" width="124">
 
-If you found this from the YouTube video — welcome. This is the improved fork. Everything you need is below.
+  <h1>Rainwater TradingView MCP</h1>
 
-Built on top of the original [tradingview-mcp](https://github.com/tradesdontlie/tradingview-mcp) by [@tradesdontlie](https://github.com/tradesdontlie). Full credit to them for the foundation. This fork adds a morning brief workflow, a rules config, and fixes the launch bug on TradingView Desktop v2.14+.
+  <p>
+    <strong>AI-readable TradingView context, built for fast local chart workflows.</strong><br>
+    One compact MCP call can read chart state, quote, OHLC summary, visible studies, Pine levels, zones, labels, speed, and estimated token cost.
+  </p>
+
+  <p>
+    <a href="#quick-start">Quick Start</a> |
+    <a href="#rainwater-context">Rainwater Context</a> |
+    <a href="#tool-reference-83-mcp-tools">Tools</a> |
+    <a href="#troubleshooting">Troubleshooting</a>
+  </p>
+
+  <p>
+    <img alt="MCP tools" src="https://img.shields.io/badge/MCP%20tools-83-0B74FF?style=for-the-badge">
+    <img alt="Local first" src="https://img.shields.io/badge/local--first-CDP%20only-22C55E?style=for-the-badge">
+    <img alt="Node" src="https://img.shields.io/badge/node-18%2B-111827?style=for-the-badge">
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-E5E7EB?style=for-the-badge">
+  </p>
+</div>
+
+<p align="center">
+  <img src="assets/rainwater-mcp-card.svg" alt="Animated Rainwater TradingView MCP card showing chart context flowing into an AI workflow">
+</p>
+
+Rainwater TradingView MCP is a Rainwater-maintained fork focused on token-efficient chart context, stable TradingView Desktop control, and repeatable AI-assisted trading research. It keeps the workflow local: your AI client talks to this MCP server, this MCP server talks to your own TradingView Desktop app over Chrome DevTools Protocol, and the response is shaped for agent use.
 
 > [!WARNING]
 > **Not affiliated with TradingView Inc. or Anthropic.** This tool connects to your locally running TradingView Desktop app via Chrome DevTools Protocol. Review the [Disclaimer](#disclaimer) before use.
@@ -15,14 +40,61 @@ Built on top of the original [tradingview-mcp](https://github.com/tradesdontlie/
 
 ---
 
+## Rainwater Context
+
+```mermaid
+flowchart LR
+  TV[TradingView Desktop] --> CDP[Chrome DevTools Port 9222]
+  CDP --> MCP[Rainwater TradingView MCP]
+  MCP --> D[rainwater_chart_digest]
+  D --> A[AI assistant]
+  A --> U[Chart-aware trading workflow]
+```
+
+The default first read is `rainwater_chart_digest`: it compresses the expensive first-pass chart inspection into one bounded payload.
+Use `mode: "lite"` for the smallest context, `mode: "standard"` for the default Rainwater read, and `mode: "full"` when you explicitly want tables and deeper drawing context.
+
+$$estimated\_tokens \approx \lceil output\_bytes / 4 \rceil$$
+
+<details>
+<summary>What the digest includes</summary>
+
+- Symbol, timeframe, chart type, and visible studies
+- Latest quote from the active chart
+- OHLC summary over a bounded bar window
+- Last three bars for immediate context
+- Study values from the data window
+- Pine `line.new`, `label.new`, and `box.new` outputs for levels, annotations, and zones
+- `elapsed_ms`, `output_bytes`, `estimated_tokens`, and soft `budget_tokens` trimming metadata
+
+</details>
+
+---
+
+## Why Rainwater
+
+| Rainwater layer | Why it matters |
+|-----------------|----------------|
+| Compact chart digest | Replaces the slow first pass of separate state, quote, OHLC, study, line, label, box, and table reads with one bounded response |
+| Token budgeting | `lite`, `standard`, `full`, and `budget_tokens` keep responses predictable for AI agents |
+| Stability hardening | CDP timeouts, reconnects, lifecycle cleanup, and a cross-process evaluate lock reduce hangs when TradingView Desktop gets busy |
+| Daily workflow | `morning_brief`, `rules.json`, and session saves turn chart reads into a repeatable trading prep loop |
+| Local-first operation | No hosted backend, no external data relay, no TradingView credential collection |
+
+---
+
 ## What's New in This Fork
 
 | Feature | What it does |
 |---------|-------------|
+| `rainwater_chart_digest` | One compact first-pass read of the active chart. Live NQ tests returned about 600-700 estimated tokens while replacing roughly seven separate reads |
+| Digest budget modes | `lite`, `standard`, `full`, and `budget_tokens` keep Rainwater reads predictable |
+| Runtime hardening | Bounded CDP timeouts, automatic reconnect, lifecycle cleanup, duplicate-process diagnostics, and a shared evaluate lock |
 | `morning_brief` | One command that scans your watchlist, reads all your indicators, and returns structured data for Claude to generate your session bias |
 | `session_save` / `session_get` | Saves your daily brief to `~/.tradingview-mcp/sessions/` so you can compare today vs yesterday |
 | `rules.json` | Write your trading rules once — bias criteria, risk rules, watchlist. The morning brief applies them automatically every day |
-| Launch bug fix | Fixed `tv_launch` compatibility with TradingView Desktop v2.14+ |
+| `tv doctor` | One command to diagnose install paths, MCP config, duplicate processes, TradingView state, CDP health, and stale client schemas |
+| Launch bug fix | Fixed `tv_launch` compatibility with current TradingView Desktop behavior |
 | `tv brief` CLI | Run your morning brief from the terminal in one word |
 
 ---
@@ -32,9 +104,9 @@ Built on top of the original [tradingview-mcp](https://github.com/tradesdontlie/
 Paste this into Claude Code and it will handle everything:
 
 ```
-Set up TradingView MCP Jackson for me. 
-Clone https://github.com/LewisWJackson/tradingview-mcp-jackson.git to ~/tradingview-mcp-jackson, run npm install, then add it to my MCP config at ~/.claude/.mcp.json (merge with any existing servers, don't overwrite them). 
-The config block is: { "mcpServers": { "tradingview": { "command": "node", "args": ["/Users/YOUR_USERNAME/tradingview-mcp-jackson/src/server.js"] } } } — replace YOUR_USERNAME with my actual username.
+Set up Rainwater TradingView MCP for me.
+Clone https://github.com/rainwaterlogic/rainwater-tradingview-mcp.git to ~/rainwater-tradingview-mcp, run npm install, then add it to my MCP config at ~/.claude/.mcp.json (merge with any existing servers, don't overwrite them).
+The config block is: { "mcpServers": { "tradingview": { "command": "node", "args": ["/Users/YOUR_USERNAME/rainwater-tradingview-mcp/src/server.js"] } } } — replace YOUR_USERNAME with my actual username.
 Then copy rules.example.json to rules.json and open it so I can fill in my trading rules.
 Finally restart and verify with tv_health_check.
 ```
@@ -57,8 +129,8 @@ Or follow the manual steps below.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/LewisWJackson/tradingview-mcp-jackson.git ~/tradingview-mcp-jackson
-cd ~/tradingview-mcp-jackson
+git clone https://github.com/rainwaterlogic/rainwater-tradingview-mcp.git ~/rainwater-tradingview-mcp
+cd ~/rainwater-tradingview-mcp
 npm install
 ```
 
@@ -103,7 +175,7 @@ Add to `~/.claude/.mcp.json` (merge with any existing servers):
   "mcpServers": {
     "tradingview": {
       "command": "node",
-      "args": ["/Users/YOUR_USERNAME/tradingview-mcp-jackson/src/server.js"]
+      "args": ["/Users/YOUR_USERNAME/rainwater-tradingview-mcp/src/server.js"]
     }
   }
 }
@@ -174,7 +246,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 |------------|---------------|
 | "Run my morning brief" | `morning_brief` → apply rules → `session_save` |
 | "What was my bias yesterday?" | `session_get` |
-| "What's on my chart?" | `chart_get_state` → `data_get_study_values` → `quote_get` |
+| "What's on my chart?" | `rainwater_chart_digest` |
 | "Give me a full analysis" | `quote_get` → `data_get_study_values` → `data_get_pine_lines` → `data_get_pine_labels` → `capture_screenshot` |
 | "Switch to BTCUSD daily" | `chart_set_symbol` → `chart_set_timeframe` |
 | "Write a Pine Script for..." | `pine_set_source` → `pine_smart_compile` → `pine_get_errors` |
@@ -184,7 +256,13 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 ---
 
-## Tool Reference (81 MCP tools)
+## Tool Reference (83 MCP tools)
+
+### Rainwater Context
+
+| Tool | What it does |
+|------|-------------|
+| `rainwater_chart_digest` | One compact first-pass read of the active chart: state, quote, OHLC summary, study values, Pine levels/zones/labels, elapsed time, output bytes, and estimated tokens. Use `mode: "lite" \| "standard" \| "full"`, `budget_tokens`, `study_filter`, and `max_items` to keep context tight. |
 
 ### Morning Brief (new in this fork)
 
@@ -198,6 +276,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 | Tool | When to use | Output size |
 |------|------------|-------------|
+| `rainwater_chart_digest` | First-pass Rainwater analysis in one call | `lite`, `standard`, `full`, and `budget_tokens` |
 | `chart_get_state` | First call — get symbol, timeframe, all indicator names + IDs | ~500B |
 | `data_get_study_values` | Read current RSI, MACD, BB, EMA values from all indicators | ~500B |
 | `quote_get` | Get latest price, OHLC, volume | ~200B |
@@ -262,6 +341,7 @@ Read `line.new()`, `label.new()`, `table.new()`, `box.new()` output from any vis
 | `watchlist_get` / `watchlist_add` | Read/modify watchlist |
 | `capture_screenshot` | Screenshot (regions: full, chart, strategy_tester) |
 | `tv_launch` / `tv_health_check` | Launch TradingView and verify connection |
+| `tv_mcp_runtime_status` | Report MCP PID, parent PID, memory, sibling server count, lifecycle guards, and CDP listening state |
 
 ---
 
@@ -272,6 +352,7 @@ tv brief                           # run morning brief
 tv session get                     # get today's saved brief
 tv session save --brief "..."      # save a brief
 
+tv doctor                          # diagnose install/runtime/CDP issues
 tv status                          # check connection
 tv quote                           # current price
 tv symbol BTCUSD                   # change symbol
@@ -290,13 +371,16 @@ Full command list: `tv --help`
 
 | Problem | Solution |
 |---------|----------|
+| Unsure what is broken | Run `tv doctor` first. It checks Node, MCP configs, duplicate server processes, TradingView, CDP, and stale client schema symptoms. |
 | `cdp_connected: false` | TradingView isn't running with `--remote-debugging-port=9222`. Use the launch script. |
 | `ECONNREFUSED` | TradingView isn't running or port 9222 is blocked |
+| Client still shows 78 tools | Restart Codex/Claude so it reloads the 83-tool Rainwater MCP schema. |
 | MCP server not showing in Claude Code | Check `~/.claude/.mcp.json` syntax, restart Claude Code |
 | `tv` command not found | Run `npm link` from the project directory |
 | `morning_brief` — "No rules.json found" | Run `cp rules.example.json rules.json` and fill it in |
 | `morning_brief` — watchlist empty | Add symbols to the `watchlist` array in `rules.json` |
 | Tools return stale data | TradingView still loading — wait a few seconds |
+| Tool call times out | TradingView may be busy or its renderer may have crashed. The MCP resets the CDP connection; run `tv doctor`, then `tv launch` if CDP is down. |
 | Pine Editor tools fail | Open Pine Editor panel first: `ui_open_panel pine-editor open` |
 
 ---
@@ -307,11 +391,23 @@ Full command list: `tv --help`
 Claude Code  ←→  MCP Server (stdio)  ←→  CDP (port 9222)  ←→  TradingView Desktop (Electron)
 ```
 
-- **78 original tools** + **3 morning brief tools** = 81 MCP tools total
+- **83 MCP tools** including Rainwater compact context, runtime status, morning brief, Pine, chart, replay, drawing, and UI tools
 - **Transport**: MCP over stdio + CLI (`tv` command)
 - **Connection**: Chrome DevTools Protocol on localhost:9222
 - **No external network calls** — everything runs locally
-- **Zero extra dependencies** beyond the original
+- **Lifecycle guards**: signal cleanup, stdin-close cleanup, parent-death watch, and optional `TV_MCP_IDLE_EXIT_MS`
+- **Stability guards**: serialized CDP evaluations, a cross-process evaluate lock for duplicate MCP servers, bounded connect/evaluate timeouts, and automatic CDP reconnect after renderer timeouts. Tune with `TV_MCP_EVALUATE_TIMEOUT_MS`, `TV_MCP_EVALUATE_ASYNC_TIMEOUT_MS`, `TV_MCP_EVALUATE_COOLDOWN_MS`, and `TV_MCP_GLOBAL_LOCK=0` if you need to disable the shared lock.
+
+---
+
+## Contributing
+
+Rainwater welcomes focused improvements that make the MCP more reliable, more token-efficient, or easier to install.
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR
+- Use the GitHub issue templates for bugs and feature requests
+- Include `tv doctor` output when reporting runtime issues
+- Keep market data local and respect the project scope in [SECURITY.md](SECURITY.md)
 
 ---
 

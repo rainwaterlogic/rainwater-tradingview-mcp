@@ -1,0 +1,101 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Rainwater TradingView MCP</title>
+  <desc id="desc">Animated Rainwater card showing compact TradingView context flowing from chart to model.</desc>
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="38%" r="72%">
+      <stop offset="0%" stop-color="#0D7CFF" stop-opacity="0.36"/>
+      <stop offset="42%" stop-color="#071B3B" stop-opacity="0.86"/>
+      <stop offset="100%" stop-color="#05070B"/>
+    </radialGradient>
+    <linearGradient id="panel" x1="158" y1="116" x2="1055" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#071329"/>
+      <stop offset="0.54" stop-color="#071E3D"/>
+      <stop offset="1" stop-color="#050B14"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#7CEBFF"/>
+      <stop offset="1" stop-color="#36FFBA"/>
+    </linearGradient>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.16 0 0 0 0 0.79 0 0 0 0 1 0 0 0 0.75 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+    <filter id="shadow" x="-20%" y="-30%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="22" stdDeviation="28" flood-color="#02040A" flood-opacity="0.6"/>
+    </filter>
+    <clipPath id="clipCard">
+      <rect x="72" y="56" width="1136" height="528" rx="38"/>
+    </clipPath>
+  </defs>
+
+  <rect width="1280" height="640" fill="#05070B"/>
+  <rect x="72" y="56" width="1136" height="528" rx="38" fill="url(#bgGlow)" stroke="#1C375F" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <g clip-path="url(#clipCard)">
+    <path d="M-80 522 C182 380 334 414 520 294 C710 172 846 178 1370 106" stroke="#113E78" stroke-width="2" opacity="0.55"/>
+    <path d="M-54 556 C214 412 364 448 544 326 C728 202 884 210 1360 152" stroke="#1B86FF" stroke-width="2" opacity="0.25">
+      <animate attributeName="stroke-dasharray" values="2 18;18 14;2 18" dur="5s" repeatCount="indefinite"/>
+    </path>
+    <g opacity="0.42">
+      <line x1="140" y1="158" x2="140" y2="518" stroke="#164570"/>
+      <line x1="220" y1="158" x2="220" y2="518" stroke="#164570"/>
+      <line x1="300" y1="158" x2="300" y2="518" stroke="#164570"/>
+      <line x1="380" y1="158" x2="380" y2="518" stroke="#164570"/>
+      <line x1="460" y1="158" x2="460" y2="518" stroke="#164570"/>
+      <line x1="540" y1="158" x2="540" y2="518" stroke="#164570"/>
+    </g>
+  </g>
+
+  <rect x="120" y="112" width="448" height="392" rx="28" fill="url(#panel)" stroke="#1A69B3"/>
+  <g opacity="0.55">
+    <rect x="168" y="374" width="24" height="58" rx="6" fill="#1BCB9B"/>
+    <rect x="222" y="338" width="24" height="94" rx="6" fill="#1B75FF"/>
+    <rect x="276" y="304" width="24" height="128" rx="6" fill="#1BCB9B"/>
+    <rect x="330" y="282" width="24" height="150" rx="6" fill="#1B75FF"/>
+    <rect x="384" y="244" width="24" height="188" rx="6" fill="#1BCB9B"/>
+    <rect x="438" y="210" width="24" height="222" rx="6" fill="#1B75FF"/>
+  </g>
+  <path d="M160 422 C222 394 254 370 304 360 C366 348 388 286 456 236" stroke="url(#cyan)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" filter="url(#softGlow)">
+    <animate attributeName="stroke-dasharray" values="0 600;600 0;600 0" dur="4.8s" repeatCount="indefinite"/>
+  </path>
+  <circle cx="456" cy="236" r="9" fill="#78FFD2" filter="url(#softGlow)">
+    <animate attributeName="r" values="7;12;7" dur="1.8s" repeatCount="indefinite"/>
+  </circle>
+
+  <g filter="url(#softGlow)">
+    <path d="M344 158 C344 158 250 270 250 350 C250 424 292 474 344 474 C396 474 438 424 438 350 C438 270 344 158 344 158Z" fill="#08172A" fill-opacity="0.78" stroke="#7CD8FF" stroke-width="3"/>
+    <path d="M292 250 C326 202 374 196 408 232" stroke="#F4FBFF" stroke-width="11" stroke-linecap="round" opacity="0.72"/>
+    <path d="M276 392 C316 426 378 426 418 388" stroke="#7CEBFF" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+  </g>
+
+  <rect x="642" y="132" width="430" height="72" rx="20" fill="#07152A" stroke="#184E82"/>
+  <rect x="642" y="232" width="492" height="72" rx="20" fill="#07152A" stroke="#184E82"/>
+  <rect x="642" y="332" width="386" height="72" rx="20" fill="#07152A" stroke="#184E82"/>
+  <rect x="642" y="432" width="312" height="72" rx="20" fill="#07152A" stroke="#184E82"/>
+
+  <text x="642" y="92" fill="#F2F8FF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="54" font-weight="800">Rainwater TradingView MCP</text>
+  <text x="674" y="176" fill="#DBF5FF" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="27" font-weight="700">one-call chart digest</text>
+  <text x="674" y="276" fill="#DBF5FF" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="27" font-weight="700">quote + bars + studies + Pine drawings</text>
+  <text x="674" y="376" fill="#DBF5FF" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="27" font-weight="700">~600 token first pass</text>
+  <text x="674" y="476" fill="#DBF5FF" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-size="27" font-weight="700">local TradingView Desktop control</text>
+
+  <g opacity="0.95">
+    <circle cx="642" cy="168" r="8" fill="#4AFFD1"/>
+    <circle cx="642" cy="268" r="8" fill="#4AFFD1"/>
+    <circle cx="642" cy="368" r="8" fill="#4AFFD1"/>
+    <circle cx="642" cy="468" r="8" fill="#4AFFD1"/>
+  </g>
+
+  <g opacity="0.7">
+    <circle cx="1126" cy="112" r="5" fill="#7CEBFF">
+      <animate attributeName="cy" values="112;150;112" dur="3.2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1162" cy="146" r="4" fill="#4AFFD1">
+      <animate attributeName="cy" values="146;178;146" dur="2.6s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1098" cy="504" r="5" fill="#1B75FF">
+      <animate attributeName="cy" values="504;472;504" dur="3.5s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+</svg>

@@ -1,13 +1,28 @@
 /**
  * Core health/discovery/launch logic.
  */
-import { getClient, getTargetInfo, evaluate } from '../connection.js';
+import { connectionStatus, getClient, getTargetInfo, evaluate } from '../connection.js';
 import { existsSync } from 'fs';
 import { execSync, spawn } from 'child_process';
+import { fileURLToPath } from 'url';
+
+const TOOL_COUNT = 83;
+const SERVER_PATH = fileURLToPath(new URL('../server.js', import.meta.url));
+const HEALTH_TIMEOUT_MS = 5000;
+
+function withTimeout(promise, ms, message) {
+  let timer;
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 
 export async function healthCheck() {
-  await getClient();
-  const target = await getTargetInfo();
+  await withTimeout(getClient(), HEALTH_TIMEOUT_MS, 'Timed out connecting to TradingView CDP');
+  const target = await withTimeout(getTargetInfo(), HEALTH_TIMEOUT_MS, 'Timed out reading TradingView target info');
 
   const state = await evaluate(`
     (function() {
@@ -27,7 +42,7 @@ export async function healthCheck() {
       }
       return result;
     })()
-  `);
+  `, { timeout_ms: HEALTH_TIMEOUT_MS });
 
   return {
     success: true,
@@ -159,6 +174,75 @@ export async function uiState() {
   return { success: true, ...state };
 }
 
+export async function runtimeStatus() {
+  const memory = process.memoryUsage();
+  const siblings = findServerSiblings();
+  return {
+    success: true,
+    pid: process.pid,
+    ppid: process.ppid,
+    uptime_seconds: Math.round(process.uptime()),
+    rss_mb: Math.round(memory.rss / 1024 / 1024),
+    heap_used_mb: Math.round(memory.heapUsed / 1024 / 1024),
+    node: process.version,
+    platform: process.platform,
+    tool_count: TOOL_COUNT,
+    server_path: SERVER_PATH,
+    sibling_server_count: siblings.length,
+    sibling_servers: siblings,
+    cdp: await cdpStatus(),
+    connection: connectionStatus(),
+    lifecycle_guards: {
+      stdin_close_exit: true,
+      signal_exit: ['SIGINT', 'SIGTERM', 'SIGHUP'],
+      parent_death_watch_ms: Number.parseInt(process.env.TV_MCP_PARENT_WATCH_MS || '30000', 10),
+      idle_exit_ms: process.env.TV_MCP_IDLE_EXIT_MS ? Number.parseInt(process.env.TV_MCP_IDLE_EXIT_MS, 10) : null,
+    },
+  };
+}
+
+function findServerSiblings() {
+  if (process.platform === 'win32') return [];
+  try {
+    const out = execSync('ps -axo pid=,ppid=,rss=,command=', { timeout: 3000 }).toString();
+    return out.split('\n')
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => {
+        const match = line.match(/^(\d+)\s+(\d+)\s+(\d+)\s+(.+)$/);
+        if (!match) return null;
+        return {
+          pid: Number(match[1]),
+          ppid: Number(match[2]),
+          rss_mb: Math.round(Number(match[3]) / 1024),
+          command: match[4],
+        };
+      })
+      .filter(proc => proc && proc.command.includes(SERVER_PATH) && proc.pid !== process.pid);
+  } catch {
+    return [];
+  }
+}
+
+async function cdpStatus() {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 1000);
+  try {
+    const resp = await fetch('http://127.0.0.1:9222/json/version', { signal: controller.signal });
+    if (!resp.ok) return { listening: false, status: resp.status };
+    const body = await resp.json();
+    return {
+      listening: true,
+      browser: body.Browser,
+      user_agent: body['User-Agent'],
+    };
+  } catch (err) {
+    return { listening: false, error: err.name === 'AbortError' ? 'timeout' : err.message };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export async function launch({ port, kill_existing } = {}) {
   const cdpPort = port || 9222;
   const killFirst = kill_existing !== false;
@@ -219,7 +303,22 @@ export async function launch({ port, kill_existing } = {}) {
     } catch { /* may not be running */ }
   }
 
-  const child = spawn(tvPath, [`--remote-debugging-port=${cdpPort}`], { detached: true, stdio: 'ignore' });
+  let child;
+  let launchMethod = 'binary';
+  if (platform === 'darwin') {
+    const appIndex = tvPath.indexOf('.app/Contents/MacOS/');
+    if (appIndex !== -1) {
+      const appBundle = tvPath.slice(0, appIndex + 4);
+      child = spawn('open', ['-na', appBundle, '--args', `--remote-debugging-port=${cdpPort}`], {
+        detached: true,
+        stdio: 'ignore',
+      });
+      launchMethod = 'open';
+    }
+  }
+  if (!child) {
+    child = spawn(tvPath, [`--remote-debugging-port=${cdpPort}`], { detached: true, stdio: 'ignore' });
+  }
   child.unref();
 
   for (let i = 0; i < 15; i++) {
@@ -236,7 +335,7 @@ export async function launch({ port, kill_existing } = {}) {
       if (ready) {
         const info = JSON.parse(ready);
         return {
-          success: true, platform, binary: tvPath, pid: child.pid,
+          success: true, platform, binary: tvPath, launch_method: launchMethod, launcher_pid: child.pid,
           cdp_port: cdpPort, cdp_url: `http://localhost:${cdpPort}`,
           browser: info.Browser, user_agent: info['User-Agent'],
         };
@@ -245,7 +344,7 @@ export async function launch({ port, kill_existing } = {}) {
   }
 
   return {
-    success: true, platform, binary: tvPath, pid: child.pid, cdp_port: cdpPort, cdp_ready: false,
+    success: true, platform, binary: tvPath, launch_method: launchMethod, launcher_pid: child.pid, cdp_port: cdpPort, cdp_ready: false,
     warning: 'TradingView launched but CDP not responding yet. It may still be loading. Try tv_health_check in a few seconds.',
   };
 }
