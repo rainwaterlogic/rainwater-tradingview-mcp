@@ -1,10 +1,10 @@
-# Contributing
+# Contributing to Rainwater TradingView MCP
 
-Thanks for your interest in contributing to tradingview-mcp.
+Thanks for your interest in contributing to Rainwater TradingView MCP.
 
 ## Scope
 
-This tool is a **local bridge** between Claude Code and the TradingView Desktop app running on your machine. All contributions must stay within this scope.
+This tool is a **local bridge** between AI clients and the TradingView Desktop app running on your machine. All contributions must stay within this scope.
 
 ### What's in scope
 
@@ -32,7 +32,8 @@ If you're unsure whether a feature fits, open an issue to discuss before submitt
 
 ```bash
 npm install
-npm test          # 29 offline tests (no TradingView needed)
+npm run test:unit # offline unit coverage
+tv doctor         # diagnose local install/runtime/CDP state
 tv status         # verify CDP connection (TradingView must be running)
 ```
 
@@ -40,5 +41,6 @@ tv status         # verify CDP connection (TradingView must be running)
 
 - Keep changes focused — one feature or fix per PR
 - Add tests for new functionality where possible
-- Ensure `npm test` passes (29/29)
+- Ensure `npm run test:unit` passes
 - Test against a live TradingView Desktop instance before submitting
+- Explain whether the change affects token usage, CDP stability, or customer setup

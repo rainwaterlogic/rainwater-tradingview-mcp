@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a Rainwater MCP improvement
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Workflow
+      description: What trading, Pine, chart-reading, or agent workflow should this improve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Describe the tool, CLI command, docs change, or behavior you want.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Rainwater chart digest / token usage
+        - TradingView CDP stability
+        - Morning brief / rules workflow
+        - Pine Script development
+        - Chart control / UI automation
+        - Documentation / setup
+        - Other
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Anything this must avoid, especially around TradingView data, account access, or automation.

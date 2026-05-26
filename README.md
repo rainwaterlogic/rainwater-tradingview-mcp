@@ -1,19 +1,33 @@
-# Rainwater TradingView MCP
+<div align="center">
+  <img src="assets/rainwater-app-icon.png" alt="Rainwater logo" width="124">
+
+  <h1>Rainwater TradingView MCP</h1>
+
+  <p>
+    <strong>AI-readable TradingView context, built for fast local chart workflows.</strong><br>
+    One compact MCP call can read chart state, quote, OHLC summary, visible studies, Pine levels, zones, labels, speed, and estimated token cost.
+  </p>
+
+  <p>
+    <a href="#quick-start">Quick Start</a> |
+    <a href="#rainwater-context">Rainwater Context</a> |
+    <a href="#tool-reference-83-mcp-tools">Tools</a> |
+    <a href="#troubleshooting">Troubleshooting</a>
+  </p>
+
+  <p>
+    <img alt="MCP tools" src="https://img.shields.io/badge/MCP%20tools-83-0B74FF?style=for-the-badge">
+    <img alt="Local first" src="https://img.shields.io/badge/local--first-CDP%20only-22C55E?style=for-the-badge">
+    <img alt="Node" src="https://img.shields.io/badge/node-18%2B-111827?style=for-the-badge">
+    <img alt="License" src="https://img.shields.io/badge/license-MIT-E5E7EB?style=for-the-badge">
+  </p>
+</div>
 
 <p align="center">
-  <img src="assets/rainwater-app-icon.png" alt="Rainwater logo" width="116">
+  <img src="assets/rainwater-mcp-card.svg" alt="Animated Rainwater TradingView MCP card showing chart context flowing into an AI workflow">
 </p>
 
-<p align="center">
-  <img src="assets/rainwater-mcp-card.svg" alt="Rainwater TradingView MCP animated card">
-</p>
-
-<p align="center">
-  <strong>Compact, local-first TradingView context for AI trading workflows.</strong><br>
-  One MCP call can read chart state, quote, OHLC summary, indicator values, Pine levels, zones, labels, speed, and estimated token cost.
-</p>
-
-Built from the Lewis Jackson fork of the original [tradingview-mcp](https://github.com/tradesdontlie/tradingview-mcp) by [@tradesdontlie](https://github.com/tradesdontlie). Full credit to the upstream projects for the foundation. Rainwater adds a compact context lane, a morning brief workflow, rules config, and fixes for current TradingView Desktop behavior.
+Rainwater TradingView MCP is a Rainwater-maintained fork focused on token-efficient chart context, stable TradingView Desktop control, and repeatable AI-assisted trading research. It keeps the workflow local: your AI client talks to this MCP server, this MCP server talks to your own TradingView Desktop app over Chrome DevTools Protocol, and the response is shaped for agent use.
 
 > [!WARNING]
 > **Not affiliated with TradingView Inc. or Anthropic.** This tool connects to your locally running TradingView Desktop app via Chrome DevTools Protocol. Review the [Disclaimer](#disclaimer) before use.
@@ -26,7 +40,7 @@ Built from the Lewis Jackson fork of the original [tradingview-mcp](https://gith
 
 ---
 
-## Why Rainwater
+## Rainwater Context
 
 ```mermaid
 flowchart LR
@@ -57,16 +71,30 @@ $$estimated\_tokens \approx \lceil output\_bytes / 4 \rceil$$
 
 ---
 
+## Why Rainwater
+
+| Rainwater layer | Why it matters |
+|-----------------|----------------|
+| Compact chart digest | Replaces the slow first pass of separate state, quote, OHLC, study, line, label, box, and table reads with one bounded response |
+| Token budgeting | `lite`, `standard`, `full`, and `budget_tokens` keep responses predictable for AI agents |
+| Stability hardening | CDP timeouts, reconnects, lifecycle cleanup, and a cross-process evaluate lock reduce hangs when TradingView Desktop gets busy |
+| Daily workflow | `morning_brief`, `rules.json`, and session saves turn chart reads into a repeatable trading prep loop |
+| Local-first operation | No hosted backend, no external data relay, no TradingView credential collection |
+
+---
+
 ## What's New in This Fork
 
 | Feature | What it does |
 |---------|-------------|
 | `rainwater_chart_digest` | One compact first-pass read of the active chart. Live NQ tests returned about 600-700 estimated tokens while replacing roughly seven separate reads |
 | Digest budget modes | `lite`, `standard`, `full`, and `budget_tokens` keep Rainwater reads predictable |
+| Runtime hardening | Bounded CDP timeouts, automatic reconnect, lifecycle cleanup, duplicate-process diagnostics, and a shared evaluate lock |
 | `morning_brief` | One command that scans your watchlist, reads all your indicators, and returns structured data for Claude to generate your session bias |
 | `session_save` / `session_get` | Saves your daily brief to `~/.tradingview-mcp/sessions/` so you can compare today vs yesterday |
 | `rules.json` | Write your trading rules once — bias criteria, risk rules, watchlist. The morning brief applies them automatically every day |
-| Launch bug fix | Fixed `tv_launch` compatibility with TradingView Desktop v2.14+ |
+| `tv doctor` | One command to diagnose install paths, MCP config, duplicate processes, TradingView state, CDP health, and stale client schemas |
+| Launch bug fix | Fixed `tv_launch` compatibility with current TradingView Desktop behavior |
 | `tv brief` CLI | Run your morning brief from the terminal in one word |
 
 ---
@@ -369,6 +397,17 @@ Claude Code  ←→  MCP Server (stdio)  ←→  CDP (port 9222)  ←→  Tradin
 - **No external network calls** — everything runs locally
 - **Lifecycle guards**: signal cleanup, stdin-close cleanup, parent-death watch, and optional `TV_MCP_IDLE_EXIT_MS`
 - **Stability guards**: serialized CDP evaluations, a cross-process evaluate lock for duplicate MCP servers, bounded connect/evaluate timeouts, and automatic CDP reconnect after renderer timeouts. Tune with `TV_MCP_EVALUATE_TIMEOUT_MS`, `TV_MCP_EVALUATE_ASYNC_TIMEOUT_MS`, `TV_MCP_EVALUATE_COOLDOWN_MS`, and `TV_MCP_GLOBAL_LOCK=0` if you need to disable the shared lock.
+
+---
+
+## Contributing
+
+Rainwater welcomes focused improvements that make the MCP more reliable, more token-efficient, or easier to install.
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR
+- Use the GitHub issue templates for bugs and feature requests
+- Include `tv doctor` output when reporting runtime issues
+- Keep market data local and respect the project scope in [SECURITY.md](SECURITY.md)
 
 ---
 
