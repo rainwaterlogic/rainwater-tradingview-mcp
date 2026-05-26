@@ -38,6 +38,7 @@ flowchart LR
 ```
 
 The default first read is `rainwater_chart_digest`: it compresses the expensive first-pass chart inspection into one bounded payload.
+Use `mode: "lite"` for the smallest context, `mode: "standard"` for the default Rainwater read, and `mode: "full"` when you explicitly want tables and deeper drawing context.
 
 $$estimated\_tokens \approx \lceil output\_bytes / 4 \rceil$$
 
@@ -50,7 +51,7 @@ $$estimated\_tokens \approx \lceil output\_bytes / 4 \rceil$$
 - Last three bars for immediate context
 - Study values from the data window
 - Pine `line.new`, `label.new`, and `box.new` outputs for levels, annotations, and zones
-- `elapsed_ms`, `output_bytes`, and `estimated_tokens`
+- `elapsed_ms`, `output_bytes`, `estimated_tokens`, and soft `budget_tokens` trimming metadata
 
 </details>
 
@@ -61,6 +62,7 @@ $$estimated\_tokens \approx \lceil output\_bytes / 4 \rceil$$
 | Feature | What it does |
 |---------|-------------|
 | `rainwater_chart_digest` | One compact first-pass read of the active chart. Live NQ tests returned about 600-700 estimated tokens while replacing roughly seven separate reads |
+| Digest budget modes | `lite`, `standard`, `full`, and `budget_tokens` keep Rainwater reads predictable |
 | `morning_brief` | One command that scans your watchlist, reads all your indicators, and returns structured data for Claude to generate your session bias |
 | `session_save` / `session_get` | Saves your daily brief to `~/.tradingview-mcp/sessions/` so you can compare today vs yesterday |
 | `rules.json` | Write your trading rules once — bias criteria, risk rules, watchlist. The morning brief applies them automatically every day |
@@ -232,7 +234,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 | Tool | What it does |
 |------|-------------|
-| `rainwater_chart_digest` | One compact first-pass read of the active chart: state, quote, OHLC summary, study values, Pine levels/zones/labels, elapsed time, output bytes, and estimated tokens. Use `study_filter` and `max_items` to keep context tight. |
+| `rainwater_chart_digest` | One compact first-pass read of the active chart: state, quote, OHLC summary, study values, Pine levels/zones/labels, elapsed time, output bytes, and estimated tokens. Use `mode: "lite" \| "standard" \| "full"`, `budget_tokens`, `study_filter`, and `max_items` to keep context tight. |
 
 ### Morning Brief (new in this fork)
 
@@ -246,7 +248,7 @@ Claude reads `CLAUDE.md` automatically when working in this project. It contains
 
 | Tool | When to use | Output size |
 |------|------------|-------------|
-| `rainwater_chart_digest` | First-pass Rainwater analysis in one call | Self-reports bytes/tokens |
+| `rainwater_chart_digest` | First-pass Rainwater analysis in one call | `lite`, `standard`, `full`, and `budget_tokens` |
 | `chart_get_state` | First call — get symbol, timeframe, all indicator names + IDs | ~500B |
 | `data_get_study_values` | Read current RSI, MACD, BB, EMA values from all indicators | ~500B |
 | `quote_get` | Get latest price, OHLC, volume | ~200B |
@@ -350,6 +352,7 @@ Full command list: `tv --help`
 | `morning_brief` — "No rules.json found" | Run `cp rules.example.json rules.json` and fill it in |
 | `morning_brief` — watchlist empty | Add symbols to the `watchlist` array in `rules.json` |
 | Tools return stale data | TradingView still loading — wait a few seconds |
+| Tool call times out | TradingView may be busy or its renderer may have crashed. The MCP resets the CDP connection; run `tv doctor`, then `tv launch` if CDP is down. |
 | Pine Editor tools fail | Open Pine Editor panel first: `ui_open_panel pine-editor open` |
 
 ---
@@ -365,6 +368,7 @@ Claude Code  ←→  MCP Server (stdio)  ←→  CDP (port 9222)  ←→  Tradin
 - **Connection**: Chrome DevTools Protocol on localhost:9222
 - **No external network calls** — everything runs locally
 - **Lifecycle guards**: signal cleanup, stdin-close cleanup, parent-death watch, and optional `TV_MCP_IDLE_EXIT_MS`
+- **Stability guards**: serialized CDP evaluations, a cross-process evaluate lock for duplicate MCP servers, bounded connect/evaluate timeouts, and automatic CDP reconnect after renderer timeouts. Tune with `TV_MCP_EVALUATE_TIMEOUT_MS`, `TV_MCP_EVALUATE_ASYNC_TIMEOUT_MS`, `TV_MCP_EVALUATE_COOLDOWN_MS`, and `TV_MCP_GLOBAL_LOCK=0` if you need to disable the shared lock.
 
 ---
 

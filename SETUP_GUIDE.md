@@ -121,6 +121,7 @@ Then `tv doctor`, `tv status`, `tv quote`, `tv pine compile`, etc. work from any
 | MCP server not showing in Claude Code | Check `~/.claude/.mcp.json` syntax, restart Claude Code |
 | `tv` command not found | Run `npm link` from the project directory |
 | Tools return stale data | TradingView may still be loading — wait a few seconds |
+| Tool call times out | TradingView may be busy or its renderer may have crashed. The MCP resets the CDP connection; run `tv doctor`, then `tv launch` if CDP is down. |
 | Pine Editor tools fail | Open the Pine Editor panel first (`ui_open_panel pine-editor open`) |
 
 ## What to Read Next

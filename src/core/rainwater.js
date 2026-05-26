@@ -4,10 +4,35 @@
 import { performance } from 'node:perf_hooks';
 import { evaluate } from '../connection.js';
 
-const DEFAULT_BAR_COUNT = 120;
 const MAX_BAR_COUNT = 500;
-const DEFAULT_MAX_ITEMS = 8;
 const MAX_ITEMS = 50;
+const DEFAULT_MODE = 'standard';
+const DIGEST_MODES = {
+  lite: {
+    bars: 60,
+    maxItems: 4,
+    includeDrawings: false,
+    includeTables: false,
+    includeStudies: true,
+    budgetTokens: 700,
+  },
+  standard: {
+    bars: 120,
+    maxItems: 8,
+    includeDrawings: true,
+    includeTables: false,
+    includeStudies: true,
+    budgetTokens: 1200,
+  },
+  full: {
+    bars: 240,
+    maxItems: 16,
+    includeDrawings: true,
+    includeTables: true,
+    includeStudies: true,
+    budgetTokens: 2400,
+  },
+};
 
 function clampInt(value, fallback, max) {
   const parsed = Number.parseInt(value, 10);
@@ -15,9 +40,45 @@ function clampInt(value, fallback, max) {
   return Math.min(parsed, max);
 }
 
+function optionalClampInt(value, fallback, max) {
+  if (value == null || value === '') return fallback;
+  return clampInt(value, fallback, max);
+}
+
+function boolOr(value, fallback) {
+  if (value == null) return fallback;
+  if (value === 'false') return false;
+  if (value === 'true') return true;
+  return Boolean(value);
+}
+
 export function estimateTokens(value) {
   const text = typeof value === 'string' ? value : JSON.stringify(value);
   return Math.ceil((text || '').length / 4);
+}
+
+export function resolveDigestParams({
+  mode,
+  bars,
+  study_filter,
+  max_items,
+  include_drawings,
+  include_tables,
+  include_studies,
+  budget_tokens,
+} = {}) {
+  const modeName = DIGEST_MODES[mode] ? mode : DEFAULT_MODE;
+  const preset = DIGEST_MODES[modeName];
+  return {
+    mode: modeName,
+    bars: optionalClampInt(bars, preset.bars, MAX_BAR_COUNT),
+    studyFilter: study_filter || '',
+    maxItems: optionalClampInt(max_items, preset.maxItems, MAX_ITEMS),
+    includeDrawings: boolOr(include_drawings, preset.includeDrawings),
+    includeTables: boolOr(include_tables, preset.includeTables),
+    includeStudies: boolOr(include_studies, preset.includeStudies),
+    budgetTokens: optionalClampInt(budget_tokens, preset.budgetTokens, 10000),
+  };
 }
 
 export function summarizeBars(bars) {
@@ -51,13 +112,86 @@ export function summarizeBars(bars) {
   };
 }
 
-export function addUsageMetrics(result, elapsedMs) {
+function clonePayload(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function estimatePayloadTokens(value) {
+  return estimateTokens(JSON.stringify(value));
+}
+
+function trimObjectValues(obj, maxKeys) {
+  if (!obj || typeof obj !== 'object') return obj;
+  return Object.fromEntries(Object.entries(obj).slice(0, maxKeys));
+}
+
+function trimToBudget(result, budgetTokens) {
+  if (!budgetTokens || estimatePayloadTokens(result) <= budgetTokens) return result;
+
+  const trimmed = clonePayload(result);
+  trimmed.budget = {
+    requested_tokens: budgetTokens,
+    trimmed: true,
+    removed: [],
+  };
+
+  function remove(label, fn) {
+    if (estimatePayloadTokens(trimmed) <= budgetTokens) return;
+    fn();
+    trimmed.budget.removed.push(label);
+  }
+
+  remove('drawings.tables', () => {
+    if (trimmed.drawings?.tables) delete trimmed.drawings.tables;
+  });
+
+  remove('long labels and zones', () => {
+    for (const group of trimmed.drawings?.labels || []) {
+      group.labels = (group.labels || []).slice(0, 3).map(label => ({
+        text: label.text,
+        price: label.price,
+      }));
+    }
+    for (const group of trimmed.drawings?.zones || []) {
+      group.zones = (group.zones || []).slice(0, 3);
+    }
+    for (const group of trimmed.drawings?.levels || []) {
+      group.prices = (group.prices || []).slice(0, 5);
+    }
+  });
+
+  remove('study value details', () => {
+    trimmed.study_values = (trimmed.study_values || []).slice(0, 5).map(study => ({
+      name: study.name,
+      values: trimObjectValues(study.values, 3),
+    }));
+  });
+
+  remove('all Pine drawings', () => {
+    delete trimmed.drawings;
+  });
+
+  remove('all study values', () => {
+    delete trimmed.study_values;
+  });
+
+  remove('extra last bars', () => {
+    if (trimmed.bars?.last_bars) trimmed.bars.last_bars = trimmed.bars.last_bars.slice(-1);
+  });
+
+  return trimmed;
+}
+
+export function addUsageMetrics(result, elapsedMs, budgetTokens) {
+  const payload = trimToBudget(result, budgetTokens);
   const base = {
-    ...result,
+    ...payload,
     usage: {
       elapsed_ms: Math.round(elapsedMs),
       output_bytes: 0,
       estimated_tokens: 0,
+      budget_tokens: budgetTokens || null,
+      budget_exceeded: false,
       replaces_calls: result.drawings ? 7 : 4,
       note: 'Estimate uses roughly 4 characters per token; actual model billing may differ.',
     },
@@ -65,26 +199,31 @@ export function addUsageMetrics(result, elapsedMs) {
   const text = JSON.stringify(base);
   base.usage.output_bytes = Buffer.byteLength(text, 'utf8');
   base.usage.estimated_tokens = estimateTokens(text);
+  base.usage.budget_exceeded = budgetTokens ? base.usage.estimated_tokens > budgetTokens : false;
   return base;
 }
 
 export async function getChartDigest({
+  mode,
   bars,
   study_filter,
   max_items,
   include_drawings,
   include_tables,
   include_studies,
+  budget_tokens,
 } = {}) {
   const startedAt = performance.now();
-  const params = {
-    bars: clampInt(bars, DEFAULT_BAR_COUNT, MAX_BAR_COUNT),
-    studyFilter: study_filter || '',
-    maxItems: clampInt(max_items, DEFAULT_MAX_ITEMS, MAX_ITEMS),
-    includeDrawings: include_drawings !== false,
-    includeTables: include_tables === true,
-    includeStudies: include_studies !== false,
-  };
+  const params = resolveDigestParams({
+    mode,
+    bars,
+    study_filter,
+    max_items,
+    include_drawings,
+    include_tables,
+    include_studies,
+    budget_tokens,
+  });
 
   const raw = await evaluate(`
     (function(params) {
@@ -341,5 +480,5 @@ export async function getChartDigest({
     throw new Error('Could not build Rainwater chart digest. The chart may still be loading.');
   }
 
-  return addUsageMetrics(raw, performance.now() - startedAt);
+  return addUsageMetrics(raw, performance.now() - startedAt, params.budgetTokens);
 }

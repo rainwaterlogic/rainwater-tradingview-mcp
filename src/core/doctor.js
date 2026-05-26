@@ -343,10 +343,18 @@ async function cdpInfo(port) {
       : [];
     const browserText = `${body.Browser || ''} ${body['User-Agent'] || ''}`;
     const looksLikeTradingView = /TradingView|Electron/i.test(browserText) || chartTargets.length > 0;
-    const status = looksLikeTradingView ? 'ok' : 'warn';
-    const message = looksLikeTradingView
-      ? `CDP is listening on port ${port}`
-      : `CDP port ${port} is open but does not look like TradingView`;
+    let status = 'ok';
+    let message = `CDP is listening on port ${port}`;
+    const recommendations = [];
+    if (!looksLikeTradingView) {
+      status = 'warn';
+      message = `CDP port ${port} is open but does not look like TradingView`;
+      recommendations.push('Close the app using port 9222, then run `tv launch`.');
+    } else if (chartTargets.length === 0) {
+      status = 'warn';
+      message = `CDP is listening on port ${port}, but no TradingView chart tab is open yet`;
+      recommendations.push('Open a TradingView chart tab before using chart-reading tools.');
+    }
     return check(status, message, {
       port,
       listening: true,
@@ -359,6 +367,7 @@ async function cdpInfo(port) {
         title: target.title,
         url: target.url,
       })).slice(0, 5),
+      recommendations,
     });
   } catch (err) {
     return check('warn', `CDP is not listening on port ${port}`, {

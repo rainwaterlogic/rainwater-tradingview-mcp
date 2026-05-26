@@ -1,7 +1,7 @@
 /**
  * Core health/discovery/launch logic.
  */
-import { getClient, getTargetInfo, evaluate } from '../connection.js';
+import { connectionStatus, getClient, getTargetInfo, evaluate } from '../connection.js';
 import { existsSync } from 'fs';
 import { execSync, spawn } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -24,7 +24,7 @@ export async function healthCheck() {
   await withTimeout(getClient(), HEALTH_TIMEOUT_MS, 'Timed out connecting to TradingView CDP');
   const target = await withTimeout(getTargetInfo(), HEALTH_TIMEOUT_MS, 'Timed out reading TradingView target info');
 
-  const state = await withTimeout(evaluate(`
+  const state = await evaluate(`
     (function() {
       var result = { url: window.location.href, title: document.title };
       try {
@@ -42,7 +42,7 @@ export async function healthCheck() {
       }
       return result;
     })()
-  `), HEALTH_TIMEOUT_MS, 'Timed out reading TradingView chart API state');
+  `, { timeout_ms: HEALTH_TIMEOUT_MS });
 
   return {
     success: true,
@@ -191,6 +191,7 @@ export async function runtimeStatus() {
     sibling_server_count: siblings.length,
     sibling_servers: siblings,
     cdp: await cdpStatus(),
+    connection: connectionStatus(),
     lifecycle_guards: {
       stdin_close_exit: true,
       signal_exit: ['SIGINT', 'SIGTERM', 'SIGHUP'],
